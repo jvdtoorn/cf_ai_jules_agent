@@ -1,69 +1,118 @@
-# 🤖 Chat Agent Starter Kit
+# 🤖 Personal AI Chatbot - Jules
 
 ![npm i agents command](./npm-agents-banner.svg)
 
-<a href="https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/agents-starter"><img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare"/></a>
+> **Built for Cloudflare Summer Internship Application**
 
-A starter template for building AI-powered chat agents using Cloudflare's Agent platform, powered by [`agents`](https://www.npmjs.com/package/agents). This project provides a foundation for creating interactive chat experiences with AI, complete with a modern UI and tool integration capabilities.
+This is a personalized AI chatbot that represents Jules, built using Cloudflare's cutting-edge AI and edge computing technologies. It allows recruiters and hiring managers to learn about Jules' background, experience, and availability through natural conversation.
 
-## Features
+## 🎯 Project Overview
 
-- 💬 Interactive chat interface with AI
-- 🛠️ Built-in tool system with human-in-the-loop confirmation
-- 📅 Advanced task scheduling (one-time, delayed, and recurring via cron)
+This chatbot demonstrates proficiency with:
+- **Llama 3.3** on Workers AI (no external API keys!)
+- **Vectorize** for semantic search over CV/cover letter
+- **Durable Objects** for stateful per-user conversations
+- **Cookie-based sessions** for frictionless anonymous authentication
+- **RAG (Retrieval Augmented Generation)** for accurate information retrieval
+
+## ✨ Features
+
+- 💬 Interactive chat with Llama 3.3 AI model
+- 🔍 Semantic search over personal documents (CV & cover letter)
+- 🍪 Anonymous cookie-based sessions (no login required)
+- 💾 Persistent conversation history per user
+- 👤 Remembers user names across sessions
+- 📄 Can provide document downloads (CV & cover letter)
+- 🔒 Secure (HttpOnly, SameSite=Strict cookies)
 - 🌓 Dark/Light theme support
 - ⚡️ Real-time streaming responses
-- 🔄 State management and chat history
-- 🎨 Modern, responsive UI
 
-## Prerequisites
+## 📚 Documentation
+
+- **[IMPLEMENTATION.md](./IMPLEMENTATION.md)** - Detailed technical implementation guide
+- **[setup-documents.md](./setup-documents.md)** - How to ingest your CV and cover letter
+- **[my-documents.example.json](./my-documents.example.json)** - Template for your documents
+
+## 🚀 Quick Start
+
+### Prerequisites
 
 - Cloudflare account
-- OpenAI API key
+- Node.js 18+ installed
 
-## Quick Start
-
-1. Create a new project:
-
-```bash
-npx create-cloudflare@latest --template cloudflare/agents-starter
-```
-
-2. Install dependencies:
+### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-3. Set up your environment:
-
-Create a `.dev.vars` file:
-
-```env
-OPENAI_API_KEY=your_openai_api_key
-```
-
-4. Run locally:
+### 2. Create Vectorize Index
 
 ```bash
-npm start
+npx wrangler vectorize create personal-cv-index --dimensions=768 --metric=cosine
 ```
 
-5. Deploy:
+### 3. Set Up Your Documents
+
+Copy the example template and fill in your information:
+
+```bash
+cp my-documents.example.json my-documents.json
+# Edit my-documents.json with your actual CV and cover letter
+```
+
+### 4. Deploy
 
 ```bash
 npm run deploy
 ```
 
-## Project Structure
+### 5. Ingest Documents
+
+```bash
+# Get your worker URL from the deploy output, then:
+curl -X POST https://your-worker.workers.dev/admin/ingest \
+  -H "Content-Type: application/json" \
+  -d @my-documents.json
+```
+
+### 6. Test Locally (Optional)
+
+```bash
+npm start
+# Visit http://localhost:8787
+```
+
+## 🧪 Testing
+
+Run the automated setup checker:
+
+```bash
+./test-setup.sh
+```
+
+Try these sample questions:
+- "Hi, I'm Sarah from Cloudflare"
+- "What experience does Jules have with Python?"
+- "Tell me about Jules' education"
+- "Can you send me your CV?"
+- "When is Jules available for an internship?"
+
+## 📁 Project Structure
 
 ```
 ├── src/
-│   ├── app.tsx        # Chat UI implementation
-│   ├── server.ts      # Chat agent logic
-│   ├── tools.ts       # Tool definitions
-│   ├── utils.ts       # Helper functions
-│   └── styles.css     # UI styling
+│   ├── server.ts           # Worker + Chat agent with session management
+│   ├── tools.ts            # RAG, memory, and document tools
+│   ├── ingest-documents.ts # Document embedding utilities
+│   ├── app.tsx             # React UI with custom branding
+│   ├── utils.ts            # Helper functions
+│   └── styles.css          # UI styling
+├── wrangler.jsonc          # Cloudflare config (Vectorize, Durable Objects, Cron)
+├── IMPLEMENTATION.md       # Technical implementation details
+├── setup-documents.md      # Document ingestion guide
+├── my-documents.example.json # Template for CV/cover letter
+└── test-setup.sh          # Automated setup verification
 ```
 
 ## Customization Guide
@@ -129,48 +178,33 @@ Tools can be configured in two ways:
 1. With an `execute` function for automatic execution
 2. Without an `execute` function, requiring confirmation and using the `executions` object to handle the confirmed action. NOTE: The keys in `executions` should match `toolsRequiringConfirmation` in `app.tsx`.
 
-### Use a different AI model provider
+## 🔧 Technical Details
 
-The starting [`server.ts`](https://github.com/cloudflare/agents-starter/blob/main/src/server.ts) implementation uses the [`ai-sdk`](https://sdk.vercel.ai/docs/introduction) and the [OpenAI provider](https://sdk.vercel.ai/providers/ai-sdk-providers/openai), but you can use any AI model provider by:
+### AI Model
 
-1. Installing an alternative AI provider for the `ai-sdk`, such as the [`workers-ai-provider`](https://sdk.vercel.ai/providers/community-providers/cloudflare-workers-ai) or [`anthropic`](https://sdk.vercel.ai/providers/ai-sdk-providers/anthropic) provider:
-2. Replacing the AI SDK with the [OpenAI SDK](https://github.com/openai/openai-node)
-3. Using the Cloudflare [Workers AI + AI Gateway](https://developers.cloudflare.com/ai-gateway/providers/workersai/#workers-binding) binding API directly
+This project uses **Llama 3.3** (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`) running on Cloudflare Workers AI. No external API keys required!
 
-For example, to use the [`workers-ai-provider`](https://sdk.vercel.ai/providers/community-providers/cloudflare-workers-ai), install the package:
+### RAG System
 
-```sh
-npm install workers-ai-provider
-```
+The Retrieval Augmented Generation system uses:
+1. **Workers AI embeddings** (`@cf/baai/bge-base-en-v1.5`) to convert text to vectors
+2. **Vectorize** to store and search document embeddings
+3. **Semantic search** to find relevant CV/cover letter chunks
+4. **Llama 3.3** to synthesize natural responses from retrieved context
 
-Add an `ai` binding to `wrangler.jsonc`:
+### Session Management
 
-```jsonc
-// rest of file
-  "ai": {
-    "binding": "AI"
-  }
-// rest of file
-```
+- Cryptographically secure session IDs via `crypto.getRandomValues()`
+- HttpOnly, Secure, SameSite=Strict cookies
+- Each session maps to a unique Durable Object instance
+- 7-day cookie expiry with automatic renewal
 
-Replace the `@ai-sdk/openai` import and usage with the `workers-ai-provider`:
+### Privacy
 
-```diff
-// server.ts
-// Change the imports
-- import { openai } from "@ai-sdk/openai";
-+ import { createWorkersAI } from 'workers-ai-provider';
-
-// Create a Workers AI instance
-+ const workersai = createWorkersAI({ binding: env.AI });
-
-// Use it when calling the streamText method (or other methods)
-// from the ai-sdk
-- const model = openai("gpt-4o-2024-11-20");
-+ const model = workersai("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b")
-```
-
-Commit your changes and then run the `agents-starter` as per the rest of this README.
+- Per-user data isolation via Durable Objects
+- No tracking or analytics beyond Cloudflare's platform
+- Users can manually clear history at any time
+- Conversations persist for continuous experience across sessions
 
 ### Modifying the UI
 
@@ -181,58 +215,70 @@ The chat interface is built with React and can be customized in `app.tsx`:
 - Customize message rendering and tool confirmation dialogs
 - Add new controls to the header
 
-### Example Use Cases
+## 🎓 What I Learned
 
-1. **Customer Support Agent**
-   - Add tools for:
-     - Ticket creation/lookup
-     - Order status checking
-     - Product recommendations
-     - FAQ database search
+Building this project helped me master:
 
-2. **Development Assistant**
-   - Integrate tools for:
-     - Code linting
-     - Git operations
-     - Documentation search
-     - Dependency checking
+1. **Cloudflare's Edge Computing Platform**
+   - Workers for serverless compute
+   - Durable Objects for stateful applications
+   - Vectorize for vector search
+   - Workers AI for inference
 
-3. **Data Analysis Assistant**
-   - Build tools for:
-     - Database querying
-     - Data visualization
-     - Statistical analysis
-     - Report generation
+2. **AI/ML Concepts**
+   - RAG (Retrieval Augmented Generation)
+   - Semantic search and embeddings
+   - Vector databases
+   - Prompt engineering
 
-4. **Personal Productivity Assistant**
-   - Implement tools for:
-     - Task scheduling with flexible timing options
-     - One-time, delayed, and recurring task management
-     - Task tracking with reminders
-     - Email drafting
-     - Note taking
+3. **Secure Web Development**
+   - Cookie-based authentication
+   - Security best practices (HttpOnly, SameSite, etc.)
+   - Privacy-preserving design
+   - Session management
 
-5. **Scheduling Assistant**
-   - Build tools for:
-     - One-time event scheduling using specific dates
-     - Delayed task execution (e.g., "remind me in 30 minutes")
-     - Recurring tasks using cron patterns
-     - Task payload management
-     - Flexible scheduling patterns
+4. **Full-Stack Development**
+   - React with TypeScript
+   - RESTful API design
+   - Real-time streaming
+   - State management
 
-Each use case can be implemented by:
+## 🚀 Future Enhancements
 
-1. Adding relevant tools in `tools.ts`
-2. Customizing the UI for specific interactions
-3. Extending the agent's capabilities in `server.ts`
-4. Adding any necessary external API integrations
+Potential improvements for this chatbot:
 
-## Learn More
+- [ ] PDF/DOCX generation for document downloads
+- [ ] Voice chat integration
+- [ ] Multi-language support
+- [ ] Admin dashboard with analytics
+- [ ] Interview scheduling integration
+- [ ] More sophisticated RAG with re-ranking
+- [ ] Conversation export functionality
+- [ ] Integration with calendar APIs
 
-- [`agents`](https://github.com/cloudflare/agents/blob/main/packages/agents/README.md)
+## 📖 Learn More
+
 - [Cloudflare Agents Documentation](https://developers.cloudflare.com/agents/)
-- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
+- [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/)
+- [Vectorize Documentation](https://developers.cloudflare.com/vectorize/)
+- [Durable Objects](https://developers.cloudflare.com/durable-objects/)
+- [Workers Documentation](https://developers.cloudflare.com/workers/)
 
-## License
+## 👤 About
+
+This project was built by Jules as part of a Cloudflare Summer Internship application. It showcases:
+
+- Proficiency with Cloudflare's AI and edge computing platform
+- Full-stack development skills
+- Understanding of modern web security practices
+- Ability to quickly learn and implement with new technologies
+
+Feel free to explore the code and chat with the bot!
+
+## 📝 License
 
 MIT
+
+---
+
+**Built with ❤️ using Cloudflare Workers, Durable Objects, Vectorize, and Workers AI**

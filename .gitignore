@@ -146,3 +146,7 @@ dist
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# Personal documents (DO NOT COMMIT YOUR ACTUAL CV/COVER LETTER)
+my-documents.json
+*.private.json

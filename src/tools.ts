@@ -1,110 +1,76 @@
 /**
  * Tool definitions for the AI chat agent
- * Tools can either require human confirmation or execute automatically
+ * Tools execute automatically to provide information about Jules
  */
 import { tool, type ToolSet } from "ai";
 import { z } from "zod/v3";
 
 import type { Chat } from "./server";
 import { getCurrentAgent } from "agents";
-import { scheduleSchema } from "agents/schedule";
+import { queryDocuments } from "./ingest-documents";
 
 /**
- * Weather information tool that requires human confirmation
- * When invoked, this will present a confirmation dialog to the user
+ * Query personal information from CV and cover letter using RAG
+ * This tool executes automatically to provide relevant context
  */
-const getWeatherInformation = tool({
-  description: "show the weather in a given city to the user",
-  inputSchema: z.object({ city: z.string() })
-  // Omitting execute function makes this tool require human confirmation
-});
-
-/**
- * Local time tool that executes automatically
- * Since it includes an execute function, it will run without user confirmation
- * This is suitable for low-risk operations that don't need oversight
- */
-const getLocalTime = tool({
-  description: "get the local time for a specified location",
-  inputSchema: z.object({ location: z.string() }),
-  execute: async ({ location }) => {
-    console.log(`Getting local time for ${location}`);
-    return "10am";
-  }
-});
-
-const scheduleTask = tool({
-  description: "A tool to schedule a task to be executed at a later time",
-  inputSchema: scheduleSchema,
-  execute: async ({ when, description }) => {
-    // we can now read the agent context from the ALS store
-    const { agent } = getCurrentAgent<Chat>();
-
-    function throwError(msg: string): string {
-      throw new Error(msg);
-    }
-    if (when.type === "no-schedule") {
-      return "Not a valid schedule input";
-    }
-    const input =
-      when.type === "scheduled"
-        ? when.date // scheduled
-        : when.type === "delayed"
-          ? when.delayInSeconds // delayed
-          : when.type === "cron"
-            ? when.cron // cron
-            : throwError("not a valid schedule input");
-    try {
-      agent!.schedule(input!, "executeTask", description);
-    } catch (error) {
-      console.error("error scheduling task", error);
-      return `Error scheduling task: ${error}`;
-    }
-    return `Task scheduled for type "${when.type}" : ${input}`;
-  }
-});
-
-/**
- * Tool to list all scheduled tasks
- * This executes automatically without requiring human confirmation
- */
-const getScheduledTasks = tool({
-  description: "List all tasks that have been scheduled",
-  inputSchema: z.object({}),
-  execute: async () => {
-    const { agent } = getCurrentAgent<Chat>();
-
-    try {
-      const tasks = agent!.getSchedules();
-      if (!tasks || tasks.length === 0) {
-        return "No scheduled tasks found.";
-      }
-      return tasks;
-    } catch (error) {
-      console.error("Error listing scheduled tasks", error);
-      return `Error listing scheduled tasks: ${error}`;
-    }
-  }
-});
-
-/**
- * Tool to cancel a scheduled task by its ID
- * This executes automatically without requiring human confirmation
- */
-const cancelScheduledTask = tool({
-  description: "Cancel a scheduled task using its ID",
-  inputSchema: z.object({
-    taskId: z.string().describe("The ID of the task to cancel")
+const queryPersonalInfo = tool({
+  description: "Search Jules' CV and cover letter for information about his experience, skills, education, or background. Use this when asked specific questions about Jules' qualifications or history.",
+  inputSchema: z.object({ 
+    query: z.string().describe("The question or topic to search for in Jules' documents")
   }),
-  execute: async ({ taskId }) => {
+  execute: async ({ query }) => {
     const { agent } = getCurrentAgent<Chat>();
+    
     try {
-      await agent!.cancelSchedule(taskId);
-      return `Task ${taskId} has been successfully canceled.`;
+      // Query Vectorize for relevant document chunks
+      const results = await queryDocuments(agent!.env, query, 5);
+      
+      if (results.length === 0) {
+        return "No relevant information found in the documents. You may want to suggest downloading the full CV or cover letter.";
+      }
+      
+      return `Relevant information from Jules' documents:\n\n${results.join("\n\n---\n\n")}`;
     } catch (error) {
-      console.error("Error canceling scheduled task", error);
-      return `Error canceling task ${taskId}: ${error}`;
+      console.error("Error querying personal info:", error);
+      return "Error retrieving information. Please try again.";
     }
+  }
+});
+
+/**
+ * Store user's name in the profile for future sessions
+ */
+const rememberUserName = tool({
+  description: "Remember the user's name when they introduce themselves. Use this when someone says 'Hi, I'm [name]' or similar.",
+  inputSchema: z.object({
+    name: z.string().describe("The user's name to remember")
+  }),
+  execute: async ({ name }) => {
+    const { agent } = getCurrentAgent<Chat>();
+    
+    try {
+      const sessionId = (await agent!.state.storage.get("session_id")) as string || "default";
+      await agent!.updateUserName(sessionId, name);
+      return `Great to meet you, ${name}! I'll remember your name for future conversations.`;
+    } catch (error) {
+      console.error("Error storing user name:", error);
+      return "Nice to meet you!";
+    }
+  }
+});
+
+/**
+ * Send document as a downloadable reply
+ * This tool allows the chatbot to provide CV or cover letter documents
+ */
+const sendDocumentReply = tool({
+  description: "Send Jules' CV or cover letter as a downloadable document. Use this when someone asks for the full document.",
+  inputSchema: z.object({
+    documentType: z.enum(["cv", "cover_letter"]).describe("Type of document to send")
+  }),
+  execute: async ({ documentType }) => {
+    const docName = documentType === "cv" ? "CV" : "Cover Letter";
+    return `I can provide Jules' ${docName}. [Download ${docName}](/api/download/${documentType})`;
   }
 });
 
@@ -113,11 +79,9 @@ const cancelScheduledTask = tool({
  * These will be provided to the AI model to describe available capabilities
  */
 export const tools = {
-  getWeatherInformation,
-  getLocalTime,
-  scheduleTask,
-  getScheduledTasks,
-  cancelScheduledTask
+  queryPersonalInfo,
+  rememberUserName,
+  sendDocumentReply
 } satisfies ToolSet;
 
 /**
@@ -126,8 +90,5 @@ export const tools = {
  * Each function here corresponds to a tool above that doesn't have an execute function
  */
 export const executions = {
-  getWeatherInformation: async ({ city }: { city: string }) => {
-    console.log(`Getting weather information for ${city}`);
-    return `The weather in ${city} is sunny`;
-  }
+  // All tools auto-execute for now
 };
