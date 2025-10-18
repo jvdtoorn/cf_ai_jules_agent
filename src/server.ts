@@ -65,6 +65,15 @@ export class Chat extends AIChatAgent<Env> {
     this.sql`UPDATE user_profile SET user_name = ${userName}, last_seen = ${now} WHERE session_id = ${sessionId}`;
   }
 
+  /**
+   * Clear all conversation history
+   */
+  async clearConversationHistory() {
+    // Clear messages using the built-in method from AIChatAgent
+    await this.clearMessages();
+    
+    return { success: true, message: "Conversation history cleared" };
+  }
 
   /**
    * Handles incoming chat messages and manages the response stream
@@ -217,6 +226,29 @@ export default {
     
     if (!sessionId) {
       sessionId = generateSessionId();
+    }
+
+    // Handle clear history endpoint
+    if (url.pathname === "/api/clear-history" && request.method === "POST") {
+      if (!sessionId) {
+        return Response.json({ success: false, error: "No session found" }, { status: 400 });
+      }
+      
+      try {
+        // Get the Durable Object stub for this session
+        const id = env.Chat.idFromName(sessionId);
+        const stub = env.Chat.get(id);
+        
+        // Call the clearConversationHistory method
+        const result = await stub.clearConversationHistory();
+        
+        return Response.json(result);
+      } catch (error) {
+        return Response.json(
+          { success: false, error: error instanceof Error ? error.message : "Unknown error" },
+          { status: 500 }
+        );
+      }
     }
 
     // If this is an agent request, inject the session ID into the URL

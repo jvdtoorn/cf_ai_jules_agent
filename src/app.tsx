@@ -23,7 +23,8 @@ import {
   Sun,
   Trash,
   PaperPlaneTilt,
-  Stop
+  Stop,
+  X
 } from "@phosphor-icons/react";
 
 // List of tools that require human confirmation
@@ -40,6 +41,7 @@ export default function Chat() {
   });
   const [showDebug, setShowDebug] = useState(false);
   const [textareaHeight, setTextareaHeight] = useState("auto");
+  const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -60,10 +62,7 @@ export default function Chat() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Scroll to bottom on mount
-  useEffect(() => {
-    scrollToBottom();
-  }, [scrollToBottom]);
+  // Don't scroll on mount - only when messages change
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
@@ -106,7 +105,7 @@ export default function Chat() {
   const {
     messages: agentMessages,
     addToolResult,
-    clearHistory,
+    clearHistory: clearLocalHistory,
     status,
     sendMessage,
     stop
@@ -114,9 +113,31 @@ export default function Chat() {
     agent
   });
 
-  // Scroll to bottom when messages change
+  // Clear both local and server-side history
+  const clearHistory = async () => {
+    // Clear local state
+    clearLocalHistory();
+    
+    // Clear server-side history
+    try {
+      const response = await fetch("/api/clear-history", { 
+        method: "POST",
+        credentials: "include" // Include cookies
+      });
+      
+      if (!response.ok) {
+        console.error("Failed to clear server history");
+      }
+    } catch (error) {
+      console.error("Error clearing server history:", error);
+    }
+  };
+
+  // Scroll to bottom when messages change (but not on initial load)
   useEffect(() => {
-    agentMessages.length > 0 && scrollToBottom();
+    if (agentMessages.length > 0) {
+      scrollToBottom();
+    }
   }, [agentMessages, scrollToBottom]);
 
   const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) =>
@@ -136,29 +157,18 @@ export default function Chat() {
   };
 
   return (
-    <div className="h-[100vh] w-full p-4 flex justify-center items-center bg-fixed overflow-hidden">
-      <div className="h-[calc(100vh-2rem)] w-full mx-auto max-w-lg flex flex-col shadow-xl rounded-md overflow-hidden relative border border-neutral-300 dark:border-neutral-800">
-        <div className="px-4 py-3 border-b border-neutral-300 dark:border-neutral-800 flex items-center gap-3 sticky top-0 z-10">
-          <div className="flex items-center justify-center h-8 w-8">
-            <svg
-              width="28px"
-              height="28px"
-              className="text-[#F48120]"
-              data-icon="agents"
-            >
-              <title>Cloudflare Agents</title>
-              <symbol id="ai:local:agents" viewBox="0 0 80 79">
-                <path
-                  fill="currentColor"
-                  d="M69.3 39.7c-3.1 0-5.8 2.1-6.7 5H48.3V34h4.6l4.5-2.5c1.1.8 2.5 1.2 3.9 1.2 3.8 0 7-3.1 7-7s-3.1-7-7-7-7 3.1-7 7c0 .9.2 1.8.5 2.6L51.9 30h-3.5V18.8h-.1c-1.3-1-2.9-1.6-4.5-1.9h-.2c-1.9-.3-3.9-.1-5.8.6-.4.1-.8.3-1.2.5h-.1c-.1.1-.2.1-.3.2-1.7 1-3 2.4-4 4 0 .1-.1.2-.1.2l-.3.6c0 .1-.1.1-.1.2v.1h-.6c-2.9 0-5.7 1.2-7.7 3.2-2.1 2-3.2 4.8-3.2 7.7 0 .7.1 1.4.2 2.1-1.3.9-2.4 2.1-3.2 3.5s-1.2 2.9-1.4 4.5c-.1 1.6.1 3.2.7 4.7s1.5 2.9 2.6 4c-.8 1.8-1.2 3.7-1.1 5.6 0 1.9.5 3.8 1.4 5.6s2.1 3.2 3.6 4.4c1.3 1 2.7 1.7 4.3 2.2v-.1q2.25.75 4.8.6h.1c0 .1.1.1.1.1.9 1.7 2.3 3 4 4 .1.1.2.1.3.2h.1c.4.2.8.4 1.2.5 1.4.6 3 .8 4.5.7.4 0 .8-.1 1.3-.1h.1c1.6-.3 3.1-.9 4.5-1.9V62.9h3.5l3.1 1.7c-.3.8-.5 1.7-.5 2.6 0 3.8 3.1 7 7 7s7-3.1 7-7-3.1-7-7-7c-1.5 0-2.8.5-3.9 1.2l-4.6-2.5h-4.6V48.7h14.3c.9 2.9 3.5 5 6.7 5 3.8 0 7-3.1 7-7s-3.1-7-7-7m-7.9-16.9c1.6 0 3 1.3 3 3s-1.3 3-3 3-3-1.3-3-3 1.4-3 3-3m0 41.4c1.6 0 3 1.3 3 3s-1.3 3-3 3-3-1.3-3-3 1.4-3 3-3M44.3 72c-.4.2-.7.3-1.1.3-.2 0-.4.1-.5.1h-.2c-.9.1-1.7 0-2.6-.3-1-.3-1.9-.9-2.7-1.7-.7-.8-1.3-1.7-1.6-2.7l-.3-1.5v-.7q0-.75.3-1.5c.1-.2.1-.4.2-.7s.3-.6.5-.9c0-.1.1-.1.1-.2.1-.1.1-.2.2-.3s.1-.2.2-.3c0 0 0-.1.1-.1l.6-.6-2.7-3.5c-1.3 1.1-2.3 2.4-2.9 3.9-.2.4-.4.9-.5 1.3v.1c-.1.2-.1.4-.1.6-.3 1.1-.4 2.3-.3 3.4-.3 0-.7 0-1-.1-2.2-.4-4.2-1.5-5.5-3.2-1.4-1.7-2-3.9-1.8-6.1q.15-1.2.6-2.4l.3-.6c.1-.2.2-.4.3-.5 0 0 0-.1.1-.1.4-.7.9-1.3 1.5-1.9 1.6-1.5 3.8-2.3 6-2.3q1.05 0 2.1.3v-4.5c-.7-.1-1.4-.2-2.1-.2-1.8 0-3.5.4-5.2 1.1-.7.3-1.3.6-1.9 1s-1.1.8-1.7 1.3c-.3.2-.5.5-.8.8-.6-.8-1-1.6-1.3-2.6-.2-1-.2-2 0-2.9.2-1 .6-1.9 1.3-2.6.6-.8 1.4-1.4 2.3-1.8l1.8-.9-.7-1.9c-.4-1-.5-2.1-.4-3.1s.5-2.1 1.1-2.9q.9-1.35 2.4-2.1c.9-.5 2-.8 3-.7.5 0 1 .1 1.5.2 1 .2 1.8.7 2.6 1.3s1.4 1.4 1.8 2.3l4.1-1.5c-.9-2-2.3-3.7-4.2-4.9q-.6-.3-.9-.6c.4-.7 1-1.4 1.6-1.9.8-.7 1.8-1.1 2.9-1.3.9-.2 1.7-.1 2.6 0 .4.1.7.2 1.1.3V72zm25-22.3c-1.6 0-3-1.3-3-3 0-1.6 1.3-3 3-3s3 1.3 3 3c0 1.6-1.3 3-3 3"
-                />
-              </symbol>
-              <use href="#ai:local:agents" />
-            </svg>
-          </div>
+    <div className="h-[100vh] w-full max-[544px]:p-0 p-4 flex justify-center items-center bg-fixed overflow-hidden max-[544px]:bg-transparent bg-neutral-100 dark:max-[544px]:bg-transparent dark:bg-neutral-900">
+      <div className="max-[544px]:h-[100vh] h-[calc(100vh-2rem)] w-full mx-auto max-w-lg flex flex-col max-[544px]:shadow-none shadow-xl max-[544px]:rounded-none rounded-2xl overflow-hidden relative max-[544px]:border-0 border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+        <div className="px-4 py-3 border-b border-neutral-300 dark:border-neutral-800 flex items-center gap-3 sticky top-0 z-10 bg-white dark:bg-neutral-950">
+          <img 
+            src="/profile.jpg" 
+            alt="Jules van der Toorn"
+            className="w-10 h-10 rounded-full object-cover border border-neutral-200 dark:border-neutral-700"
+          />
 
-          <div className="flex-1">
-            <h2 className="font-semibold text-base">Chat with Jules</h2>
+          <div className="flex-1 pt-1">
+            <h2 className="font-semibold text-base">Jules van der Toorn</h2>
+            <p className="text-xs text-muted-foreground -mt-0.5">Ask me anything!</p>
           </div>
 
           <div className="flex items-center gap-2 mr-2">
@@ -191,39 +201,42 @@ export default function Chat() {
           </Button>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 max-h-[calc(100vh-10rem)]">
-          {agentMessages.length === 0 && (
-            <div className="h-full flex items-center justify-center">
-              <Card className="p-6 max-w-md mx-auto bg-neutral-100 dark:bg-neutral-900">
-                <div className="text-center space-y-4">
-                  <div className="bg-[#F48120]/10 text-[#F48120] rounded-full p-3 inline-flex">
-                    <Robot size={24} />
-                  </div>
-                  <h3 className="font-semibold text-lg">👋 Hi! I'm Jules</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Well, actually I'm an AI chatbot representing Jules. Feel free to ask me anything about:
+        {/* Messages Container */}
+          <div className="flex-1 relative">
+            {/* Messages */}
+            <div className={`absolute inset-0 overflow-y-auto p-4 space-y-1 ${showSuggestions ? 'pb-13' : 'pb-2'}`}>
+            {agentMessages.length === 0 && (
+            <div className="flex justify-center py-4">
+              <Card className="p-8 max-w-md mx-auto bg-neutral-100 dark:bg-neutral-900 rounded-2xl">
+                <div className="text-center space-y-1 text-[13px]">
+                  <div className="text-4xl mb-2 pt-0">👋</div>
+                  <p className="leading-relaxed pt-2">
+                    Hi! I'm <span className="font-semibold text-[#F48120]">Jules' digital twin</span>, powered by Llama 3.3. 
+                    I would be really excited to intern at <span className="font-semibold text-[#F48120]">Cloudflare</span>, 
+                    so I built this chat to answer any questions you might have about me!
                   </p>
-                  <ul className="text-sm text-left space-y-2">
-                    <li className="flex items-center gap-2">
-                      <span className="text-[#F48120]">•</span>
-                      <span>Jules' work experience and skills</span>
+                  <p className="font-semibold text-[#F48120] pt-3">You can ask me...</p>
+                  <ul className="text-left space-y-0 pt-0">
+                    <li className="flex items-center gap-3">
+                      <span className="text-[#F48120] text-lg">•</span>
+                      <span>to elaborate on my work experience and skills 💼</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-[#F48120]">•</span>
-                      <span>Educational background</span>
+                    <li className="flex items-center gap-3">
+                      <span className="text-[#F48120] text-lg">•</span>
+                      <span>about my educational background 🎓</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-[#F48120]">•</span>
-                      <span>Internship availability</span>
+                    <li className="flex items-center gap-3">
+                      <span className="text-[#F48120] text-lg">•</span>
+                      <span>to specify my internship availability 📅</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-[#F48120]">•</span>
-                      <span>Or request Jules' CV or cover letter</span>
+                    <li className="flex items-center gap-3">
+                      <span className="text-[#F48120] text-lg">•</span>
+                      <span>to share my CV or cover letter 📄</span>
                     </li>
                   </ul>
-                  <p className="text-xs text-muted-foreground italic">
-                    Your conversation is private and remembered for your next visit.
+                  <p className="text-left">... and other things such as hobbies and interests!</p>
+                  <p className="text-xs text-muted-foreground italic pt-5">
+                    Your conversation is private and automatically deleted after 7 days of inactivity.
                   </p>
                 </div>
               </Card>
@@ -232,8 +245,19 @@ export default function Chat() {
 
           {agentMessages.map((m, index) => {
             const isUser = m.role === "user";
-            const showAvatar =
-              index === 0 || agentMessages[index - 1]?.role !== m.role;
+            
+            // Filter out empty text parts (e.g., step-start with empty string)
+            const hasVisibleContent = m.parts?.some((part) => {
+              if (part.type === "text") {
+                return part.text.trim().length > 0;
+              }
+              return true; // Keep tool invocations
+            });
+            
+            // Skip rendering if no visible content
+            if (!hasVisibleContent) {
+              return null;
+            }
 
             return (
               <div key={m.id}>
@@ -243,31 +267,30 @@ export default function Chat() {
                   </pre>
                 )}
                 <div
-                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                  className={`flex ${isUser ? "justify-end" : "justify-start"} mb-0.5`}
                 >
                   <div
-                    className={`flex gap-2 max-w-[85%] ${
+                    className={`flex gap-2 max-w-[75%] ${
                       isUser ? "flex-row-reverse" : "flex-row"
                     }`}
                   >
-                    {showAvatar && !isUser ? (
-                      <Avatar username={"AI"} />
-                    ) : (
-                      !isUser && <div className="w-8" />
-                    )}
-
                     <div>
                       <div>
                         {m.parts?.map((part, i) => {
                           if (part.type === "text") {
+                            // Skip empty text parts
+                            if (part.text.trim().length === 0) {
+                              return null;
+                            }
+                            
                             return (
                               // biome-ignore lint/suspicious/noArrayIndexKey: immutable index
                               <div key={i}>
                                 <Card
-                                  className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
+                                  className={`p-3 rounded-2xl shadow-sm ${
                                     isUser
-                                      ? "rounded-br-none"
-                                      : "rounded-bl-none border-assistant-border"
+                                      ? "bg-[#F48120] text-white border-none"
+                                      : "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700"
                                   } ${
                                     part.text.startsWith("scheduled message")
                                       ? "border-accent/50"
@@ -281,16 +304,18 @@ export default function Chat() {
                                       🕒
                                     </span>
                                   )}
-                                  <MemoizedMarkdown
-                                    id={`${m.id}-${i}`}
-                                    content={part.text.replace(
-                                      /^scheduled message: /,
-                                      ""
-                                    )}
-                                  />
+                                  <div className={isUser ? "text-white" : ""}>
+                                    <MemoizedMarkdown
+                                      id={`${m.id}-${i}`}
+                                      content={part.text.replace(
+                                        /^scheduled message: /,
+                                        ""
+                                      )}
+                                    />
+                                  </div>
                                 </Card>
                                 <p
-                                  className={`text-xs text-muted-foreground mt-1 ${
+                                  className={`text-xs text-muted-foreground mt-1 px-2 ${
                                     isUser ? "text-right" : "text-left"
                                   }`}
                                 >
@@ -352,6 +377,55 @@ export default function Chat() {
             );
           })}
           <div ref={messagesEndRef} />
+          </div>
+
+          {/* Question Suggestions - Fixed to bottom of container */}
+          {showSuggestions && (
+            <div className="absolute bottom-0 left-0 right-0 pb-3 pointer-events-none">
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto px-4">
+              <button
+                onClick={async () => {
+                  await sendMessage({
+                    role: "user",
+                    parts: [{ type: "text", text: "Why should we hire you?" }]
+                  });
+                }}
+                className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+              >
+                Why should we hire you?
+              </button>
+              <button
+                onClick={async () => {
+                  await sendMessage({
+                    role: "user",
+                    parts: [{ type: "text", text: "What are your hobbies?" }]
+                  });
+                }}
+                className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+              >
+                What are your hobbies?
+              </button>
+              <button
+                onClick={async () => {
+                  await sendMessage({
+                    role: "user",
+                    parts: [{ type: "text", text: "Share your CV" }]
+                  });
+                }}
+                className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+              >
+                Share your CV
+              </button>
+                <button
+                  onClick={() => setShowSuggestions(false)}
+                  className="ml-2 p-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 hover:bg-white dark:hover:bg-neutral-800 transition-colors shrink-0"
+                  aria-label="Dismiss suggestions"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Input Area */}
@@ -365,7 +439,7 @@ export default function Chat() {
             });
             setTextareaHeight("auto"); // Reset height after submission
           }}
-          className="p-3 bg-neutral-50 absolute bottom-0 left-0 right-0 z-10 border-t border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900"
+          className="p-3 bg-neutral-50 border-t border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 shrink-0"
         >
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">

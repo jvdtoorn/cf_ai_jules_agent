@@ -50,7 +50,7 @@ const AvatarComponent = ({
     >
       {image ? (
         <img
-          className="w-full"
+          className="w-full h-full object-cover"
           height={size === "sm" ? 28 : size === "base" ? 32 : 36}
           width={size === "sm" ? 28 : size === "base" ? 32 : 36}
           src={image}

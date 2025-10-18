@@ -237,7 +237,7 @@
 }
 
 .add-size-md {
-  @apply h-8 rounded-md px-2.5 text-base;
+  @apply h-8 rounded-xl px-2.5 text-base;
 
   @variant square {
     @apply flex size-8 items-center justify-center px-0;
@@ -249,7 +249,7 @@
 }
 
 .add-size-base {
-  @apply h-9 rounded-md px-3 text-base;
+  @apply h-9 rounded-xl px-3 text-base;
 
   @variant square {
     @apply flex size-9 items-center justify-center px-0;
@@ -309,4 +309,13 @@
   to {
     transform: rotate(360deg) scale(0.9);
   }
+}
+
+/* Hide scrollbar for suggestion pills */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
 }
