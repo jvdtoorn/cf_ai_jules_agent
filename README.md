@@ -2,7 +2,7 @@
 
 ![Chat with Jules Screenshot](./docs/screenshot.png)
 
-**🚀 Try it out yourself: [cf-ai-jules-agent.jules-18a.workers.dev](https://cf-ai-jules-agent.jules-18a.workers.dev/)**
+**🚀 Try it out yourself: [jules-agent.vandertoorn.com](https://jules-agent.vandertoorn.com)**
 
 Ever wanted to chat with a candidate at 3 AM without waking them up? Now you can! This is my digital twin - an AI-powered chat agent that knows everything about me. Built specifically for Cloudflare recruiters to learn about my experience and skills.
 
