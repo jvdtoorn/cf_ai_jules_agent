@@ -10,7 +10,8 @@
 		"test": "vitest",
 		"types": "wrangler types env.d.ts --include-runtime false",
 		"format": "prettier --write .",
-		"check": "prettier . --check && biome lint && tsc"
+		"check": "prettier . --check && biome lint && tsc",
+		"upload-docs": "tsx scripts/upload-documents.ts"
 	},
 	"keywords": [
 		"cloudflare",
@@ -31,6 +32,7 @@
 		"@vitejs/plugin-react": "^5.0.4",
 		"prettier": "^3.6.2",
 		"tailwindcss": "^4.1.14",
+		"tsx": "^4.20.6",
 		"typescript": "^5.9.3",
 		"vite": "^7.1.9",
 		"vitest": "3.2.4",

@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Markdown Link Styling */
+.markdown-body a {
+  @apply text-blue-600 dark:text-blue-400 underline hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer;
+}
+
 /* Markdown Table Styling (Tailwind @apply) */
 .markdown-body table {
   @apply w-full border-collapse my-4 text-[0.95em];

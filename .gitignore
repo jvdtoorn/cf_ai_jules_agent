@@ -150,3 +150,7 @@ dist
 # Personal documents (DO NOT COMMIT YOUR ACTUAL CV/COVER LETTER)
 my-documents.json
 *.private.json
+
+# Data directory - track the folder but not the files inside
+data/*
+!data/.gitkeep

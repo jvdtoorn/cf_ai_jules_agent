@@ -104,7 +104,8 @@ export async function processToolCalls<Tools extends ToolSet>({
  * Prevents API errors from interrupted or failed tool executions
  */
 export function cleanupMessages(messages: UIMessage[]): UIMessage[] {
-  return messages.filter((message) => {
+  // First, filter out incomplete tool calls
+  const filtered = messages.filter((message) => {
     if (!message.parts) return true;
 
     // Filter out messages with incomplete tool calls
@@ -119,4 +120,19 @@ export function cleanupMessages(messages: UIMessage[]): UIMessage[] {
 
     return !hasIncompleteToolCall;
   });
+
+  // Merge consecutive user messages to avoid LLM API errors
+  const merged: UIMessage[] = [];
+  for (const message of filtered) {
+    const lastMessage = merged[merged.length - 1];
+    
+    // If current and last message are both from user, merge them
+    if (lastMessage && lastMessage.role === "user" && message.role === "user") {
+      lastMessage.parts = [...(lastMessage.parts || []), ...(message.parts || [])];
+    } else {
+      merged.push(message);
+    }
+  }
+
+  return merged;
 }

@@ -36,10 +36,10 @@
 	"observability": {
 		"enabled": true
 	},
-	"vectorize": [
+	"r2_buckets": [
 		{
-			"binding": "VECTORIZE",
-			"index_name": "personal-cv-index",
+			"binding": "DOCUMENTS",
+			"bucket_name": "documents",
 			"remote": true
 		}
 	]

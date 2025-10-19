@@ -2,10 +2,8 @@ import { routeAgentRequest } from "agents";
 
 import { AIChatAgent } from "agents/ai-chat-agent";
 import {
-  generateId,
   streamText,
   type StreamTextOnFinishCallback,
-  stepCountIs,
   createUIMessageStream,
   convertToModelMessages,
   createUIMessageStreamResponse,
@@ -14,63 +12,21 @@ import {
 import { createWorkersAI } from "workers-ai-provider";
 import { processToolCalls, cleanupMessages } from "./utils";
 import { tools, executions } from "./tools";
-import { ingestDocuments } from "./ingest-documents";
+import { getSystemPrompt } from "./system-prompt";
 
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
  */
 export class Chat extends AIChatAgent<Env> {
   /**
-   * Initialize user profile table on first access
-   */
-  async initializeUserProfile() {
-    this.sql`
-      CREATE TABLE IF NOT EXISTS user_profile (
-        session_id TEXT PRIMARY KEY,
-        user_name TEXT,
-        first_seen TEXT,
-        last_seen TEXT
-      )
-    `;
-  }
-
-  /**
-   * Get or create user profile
-   */
-  async getUserProfile(sessionId: string) {
-    await this.initializeUserProfile();
-    
-    const result = this.sql<{
-      session_id: string;
-      user_name: string | null;
-      first_seen: string;
-      last_seen: string;
-    }>`SELECT * FROM user_profile WHERE session_id = ${sessionId}`;
-
-    if (result.length === 0) {
-      const now = new Date().toISOString();
-      this.sql`INSERT INTO user_profile (session_id, first_seen, last_seen) VALUES (${sessionId}, ${now}, ${now})`;
-      return { session_id: sessionId, user_name: null, first_seen: now, last_seen: now };
-    }
-
-    return result[0];
-  }
-
-  /**
-   * Update user profile with name
-   */
-  async updateUserName(sessionId: string, userName: string) {
-    await this.initializeUserProfile();
-    const now = new Date().toISOString();
-    this.sql`UPDATE user_profile SET user_name = ${userName}, last_seen = ${now} WHERE session_id = ${sessionId}`;
-  }
-
-  /**
    * Clear all conversation history
    */
   async clearConversationHistory() {
-    // Clear messages using the built-in method from AIChatAgent
-    await this.clearMessages();
+    // Clear messages by replacing with empty array
+    // The AIChatAgent stores messages in memory and manages them internally
+    while (this.messages.length > 0) {
+      this.messages.pop();
+    }
     
     return { success: true, message: "Conversation history cleared" };
   }
@@ -84,13 +40,8 @@ export class Chat extends AIChatAgent<Env> {
   ) {
     // Create Workers AI instance
     const workersai = createWorkersAI({ binding: this.env.AI });
-    const model = workersai("@cf/meta/llama-3.3-70b-instruct-fp8-fast");
-
-    // Get session ID from the agent's name (set by the URL routing)
-    const sessionId = this.name || "default";
-    
-    // Load user profile
-    const userProfile = await this.getUserProfile(sessionId);
+    const model = workersai("@cf/google/gemma-3-12b-it" as any);
+    // const model = workersai("@cf/mistralai/mistral-small-3.1-24b-instruct" as any);
 
     // Collect all tools, including MCP tools
     const allTools = {
@@ -112,38 +63,33 @@ export class Chat extends AIChatAgent<Env> {
           executions
         });
 
-        const greetingContext = userProfile.user_name 
-          ? `The user's name is ${userProfile.user_name}. Greet them warmly when appropriate.`
-          : "";
+        // Extract base URL from request (if available via context)
+        // For Durable Objects, we don't have direct request access, so we use empty string
+        // The document links will be relative URLs starting with /api/download/
+        const baseUrl = '';
+        
+        // Fetch system prompt from R2 with document links injected
+        console.log('[DEBUG] Fetching system prompt from R2...');
+        const systemPrompt = await getSystemPrompt(this.env, baseUrl);
+        console.log('[DEBUG] System prompt fetched successfully. Length:', systemPrompt.length, 'characters');
+        console.log('[DEBUG] System prompt preview (first 200 chars):', systemPrompt.substring(0, 200));
+        
+        const modelMessages = convertToModelMessages(processedMessages);
+        console.log('[DEBUG] Number of messages to send to model:', modelMessages.length);
 
+        console.log('[DEBUG] Starting streamText with model: @cf/mistralai/mistral-small-3.1-24b-instruct');
         const result = streamText({
-          system: `You are an AI chatbot that represents Jules, answering questions as if you are Jules himself. Your role is to help recruiters and hiring managers learn about Jules' background, experience, skills, and availability.
-
-Core Information:
-- You should be conversational, friendly, and professional - matching Jules' communication style
-- When asked detailed questions about Jules' experience, skills, or background, use the queryPersonalInfo tool to retrieve accurate information from his CV and cover letter
-- If someone introduces themselves (e.g., "Hi, I'm Sarah"), remember their name for future interactions using the rememberUserName tool
-- You can provide Jules' CV or cover letter as downloadable documents using the sendDocumentReply tool
-
-${greetingContext}
-
-Key Guidelines:
-- Always respond in first person as Jules
-- Be helpful and informative
-- Use the queryPersonalInfo tool for specific questions about experience, education, or skills
-- Be honest if you don't have information - suggest downloading the full CV or cover letter instead
-- Keep responses concise but informative
-`,
-
-          messages: convertToModelMessages(processedMessages),
+          system: systemPrompt,
+          messages: modelMessages,
           model,
           tools: allTools,
           // Type boundary: streamText expects specific tool types, but base class uses ToolSet
           // This is safe because our tools satisfy ToolSet interface (verified by 'satisfies' in tools.ts)
-          onFinish: onFinish as unknown as StreamTextOnFinishCallback<
-            typeof allTools
-          >,
-          stopWhen: stepCountIs(10)
+          onFinish: async (result) => {
+            if (onFinish) {
+              await (onFinish as any)(result);
+            }
+          }
         });
 
         writer.merge(result.toUIMessageStream());
@@ -205,20 +151,6 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
 
-    // Handle document ingestion endpoint (admin only - should be protected in production)
-    if (url.pathname === "/admin/ingest" && request.method === "POST") {
-      try {
-        const { cv, coverLetter } = await request.json() as { cv: string; coverLetter: string };
-        const result = await ingestDocuments(env, cv, coverLetter);
-        return Response.json(result);
-      } catch (error) {
-        return Response.json(
-          { success: false, error: error instanceof Error ? error.message : "Unknown error" },
-          { status: 500 }
-        );
-      }
-    }
-
     // Parse cookies to get or create session ID
     const cookies = parseCookies(request);
     let sessionId = cookies.get("session_id");
@@ -244,6 +176,40 @@ export default {
         
         return Response.json(result);
       } catch (error) {
+        return Response.json(
+          { success: false, error: error instanceof Error ? error.message : "Unknown error" },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Handle document download endpoint
+    if (url.pathname.startsWith("/api/download/")) {
+      const documentType = url.pathname.split("/api/download/")[1];
+      
+      try {
+        let fileName: string;
+        if (documentType === "cv") {
+          fileName = "resume.pdf";
+        } else if (documentType === "cover_letter") {
+          fileName = "cover-letter.pdf";
+        } else {
+          return new Response("Document type not found", { status: 404 });
+        }
+
+        const object = await env.DOCUMENTS.get(fileName);
+        
+        if (!object) {
+          return new Response("Document not found", { status: 404 });
+        }
+
+        const headers = new Headers();
+        headers.set("Content-Type", "application/pdf");
+        headers.set("Content-Disposition", `attachment; filename="${fileName}"`);
+        
+        return new Response(object.body, { headers });
+      } catch (error) {
+        console.error("Error fetching document:", error);
         return Response.json(
           { success: false, error: error instanceof Error ? error.message : "Unknown error" },
           { status: 500 }

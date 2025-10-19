@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: it's alright */
-import { useEffect, useState, useRef, useCallback, use } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAgent } from "agents/react";
 import { isToolUIPart } from "ai";
 import { useAgentChat } from "agents/ai-react";
@@ -9,17 +9,14 @@ import type { tools } from "./tools";
 // Component imports
 import { Button } from "@/components/button/Button";
 import { Card } from "@/components/card/Card";
-import { Avatar } from "@/components/avatar/Avatar";
 import { Toggle } from "@/components/toggle/Toggle";
 import { Textarea } from "@/components/textarea/Textarea";
 import { MemoizedMarkdown } from "@/components/memoized-markdown";
-import { ToolInvocationCard } from "@/components/tool-invocation-card/ToolInvocationCard";
 
 // Icon imports
 import {
   Bug,
   Moon,
-  Robot,
   Sun,
   Trash,
   PaperPlaneTilt,
@@ -104,7 +101,6 @@ export default function Chat() {
 
   const {
     messages: agentMessages,
-    addToolResult,
     clearHistory: clearLocalHistory,
     status,
     sendMessage,
@@ -207,12 +203,12 @@ export default function Chat() {
             <div className={`absolute inset-0 overflow-y-auto p-4 space-y-1 ${showSuggestions ? 'pb-13' : 'pb-2'}`}>
             {agentMessages.length === 0 && (
             <div className="flex justify-center py-4">
-              <Card className="p-8 max-w-md mx-auto bg-neutral-100 dark:bg-neutral-900 rounded-2xl">
+              <Card className="p-7 max-w-md mx-auto bg-neutral-100 dark:bg-neutral-900 rounded-2xl">
                 <div className="text-center space-y-1 text-[13px]">
                   <div className="text-4xl mb-2 pt-0">👋</div>
                   <p className="leading-relaxed pt-2">
                     Hi! I'm <span className="font-semibold text-[#F48120]">Jules' digital twin</span>, powered by Llama 3.3. 
-                    I would be really excited to intern at <span className="font-semibold text-[#F48120]">Cloudflare</span>, 
+                    I would love to intern at Cloudflare, 
                     so I built this chat to answer any questions you might have about me!
                   </p>
                   <p className="font-semibold text-[#F48120] pt-3">You can ask me...</p>
@@ -234,7 +230,7 @@ export default function Chat() {
                       <span>to share my CV or cover letter 📄</span>
                     </li>
                   </ul>
-                  <p className="text-left">... and other things such as hobbies and interests!</p>
+                  <p className="text-left pt-0.5">... and other things such as my hobbies and interests!</p>
                   <p className="text-xs text-muted-foreground italic pt-5">
                     Your conversation is private and automatically deleted after 7 days of inactivity.
                   </p>
@@ -333,39 +329,52 @@ export default function Chat() {
                             isToolUIPart(part) &&
                             m.id.startsWith("assistant")
                           ) {
-                            const toolCallId = part.toolCallId;
-                            const toolName = part.type.replace("tool-", "");
-                            const needsConfirmation =
-                              toolsRequiringConfirmation.includes(
-                                toolName as keyof typeof tools
+                            // Hide tool call invocations, but show tool results/outputs
+                            if (part.state === "output-available" && part.output) {
+                              // Render tool output as a regular message
+                              const isUser = m.role === "user";
+                              const outputText = typeof part.output === "string" 
+                                ? part.output 
+                                : JSON.stringify(part.output);
+                              
+                              return (
+                                <div
+                                  key={`${m.id}-${i}`}
+                                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                                >
+                                  <div className="max-w-[80%]">
+                                    <Card
+                                      className={`px-4 py-3 ${
+                                        isUser
+                                          ? "bg-orange-500 text-white"
+                                          : "bg-white dark:bg-neutral-800"
+                                      }`}
+                                    >
+                                      <div className={isUser ? "text-white" : ""}>
+                                        <MemoizedMarkdown
+                                          id={`${m.id}-${i}`}
+                                          content={outputText}
+                                        />
+                                      </div>
+                                    </Card>
+                                    <p
+                                      className={`text-xs text-muted-foreground mt-1 px-2 ${
+                                        isUser ? "text-right" : "text-left"
+                                      }`}
+                                    >
+                                      {formatTime(
+                                        m.metadata?.createdAt
+                                          ? new Date(m.metadata.createdAt)
+                                          : new Date()
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
                               );
-
-                            // Skip rendering the card in debug mode
-                            if (showDebug) return null;
-
-                            return (
-                              <ToolInvocationCard
-                                // biome-ignore lint/suspicious/noArrayIndexKey: using index is safe here as the array is static
-                                key={`${toolCallId}-${i}`}
-                                toolUIPart={part}
-                                toolCallId={toolCallId}
-                                needsConfirmation={needsConfirmation}
-                                onSubmit={({ toolCallId, result }) => {
-                                  addToolResult({
-                                    tool: part.type.replace("tool-", ""),
-                                    toolCallId,
-                                    output: result
-                                  });
-                                }}
-                                addToolResult={(toolCallId, result) => {
-                                  addToolResult({
-                                    tool: part.type.replace("tool-", ""),
-                                    toolCallId,
-                                    output: result
-                                  });
-                                }}
-                              />
-                            );
+                            }
+                            
+                            // Hide all other tool states (input-available, running, etc.)
+                            return null;
                           }
                           return null;
                         })}
@@ -382,7 +391,7 @@ export default function Chat() {
           {/* Question Suggestions - Fixed to bottom of container */}
           {showSuggestions && (
             <div className="absolute bottom-0 left-0 right-0 pb-3 pointer-events-none">
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto px-4">
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto px-3">
               <button
                 onClick={async () => {
                   await sendMessage({
@@ -409,16 +418,16 @@ export default function Chat() {
                 onClick={async () => {
                   await sendMessage({
                     role: "user",
-                    parts: [{ type: "text", text: "Share your CV" }]
+                    parts: [{ type: "text", text: "What are your socials?" }]
                   });
                 }}
                 className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
               >
-                Share your CV
+                What are your socials?
               </button>
                 <button
                   onClick={() => setShowSuggestions(false)}
-                  className="ml-2 p-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 hover:bg-white dark:hover:bg-neutral-800 transition-colors shrink-0"
+                  className="p-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 hover:bg-white dark:hover:bg-neutral-800 transition-colors shrink-0"
                   aria-label="Dismiss suggestions"
                 >
                   <X size={16} />
