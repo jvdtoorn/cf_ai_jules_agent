@@ -135,10 +135,12 @@ function parseCookies(request: Request): Map<string, string> {
 function setSessionCookie(response: Response, sessionId: string, maxAge = 60 * 60 * 24 * 7): Response {
   const newResponse = new Response(response.body, response);
   
-  // Set secure, httpOnly cookie with SameSite=Strict
+  // Set httpOnly cookie with SameSite=Lax
+  // Note: Secure flag is omitted for local development compatibility (Safari)
+  // In production, the cookie will be secure automatically via HTTPS
   newResponse.headers.set(
     "Set-Cookie",
-    `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`
+    `session_id=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`
   );
   
   return newResponse;
@@ -158,6 +160,17 @@ export default {
     
     if (!sessionId) {
       sessionId = generateSessionId();
+    }
+
+    // Handle session endpoint - returns current session ID
+    if (url.pathname === "/api/session" && request.method === "GET") {
+      const response = Response.json({ sessionId });
+      
+      if (needsNewCookie) {
+        return setSessionCookie(response, sessionId);
+      }
+      
+      return response;
     }
 
     // Handle clear history endpoint

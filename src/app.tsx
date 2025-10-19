@@ -40,6 +40,10 @@ export default function Chat() {
   const [textareaHeight, setTextareaHeight] = useState("auto");
   const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Check if we're in local development (localhost or 127.0.0.1)
+  const isLocalDev = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,8 +70,20 @@ export default function Chat() {
     setTheme(newTheme);
   };
 
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // Fetch session ID on mount
+  useEffect(() => {
+    fetch("/api/session", { credentials: "include" })
+      .then(res => res.json())
+      .then(data => setSessionId((data as { sessionId: string }).sessionId))
+      .catch(console.error);
+  }, []);
+
+  // Connect to agent with session ID as name
   const agent = useAgent({
-    agent: "chat"
+    agent: "chat",
+    name: sessionId || undefined
   });
 
   const [agentInput, setAgentInput] = useState("");
@@ -153,8 +169,8 @@ export default function Chat() {
   };
 
   return (
-    <div className="h-[100vh] w-full max-[544px]:p-0 p-4 flex justify-center items-center bg-fixed overflow-hidden max-[544px]:bg-transparent bg-neutral-100 dark:max-[544px]:bg-transparent dark:bg-neutral-900">
-      <div className="max-[544px]:h-[100vh] h-[calc(100vh-2rem)] w-full mx-auto max-w-lg flex flex-col max-[544px]:shadow-none shadow-xl max-[544px]:rounded-none rounded-2xl overflow-hidden relative max-[544px]:border-0 border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+    <div className="h-[100dvh] w-full max-[544px]:p-0 p-4 flex justify-center items-center bg-fixed overflow-hidden max-[544px]:bg-transparent bg-neutral-100 dark:max-[544px]:bg-transparent dark:bg-neutral-900">
+      <div className="max-[544px]:h-[100dvh] h-[calc(100dvh-2rem)] w-full mx-auto max-w-lg flex flex-col max-[544px]:shadow-none shadow-xl max-[544px]:rounded-none rounded-2xl overflow-hidden relative max-[544px]:border-0 border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-950">
         <div className="px-4 py-3 border-b border-neutral-300 dark:border-neutral-800 flex items-center gap-3 sticky top-0 z-10 bg-white dark:bg-neutral-950">
           <img 
             src="/profile.jpg" 
@@ -167,19 +183,19 @@ export default function Chat() {
             <p className="text-xs text-muted-foreground -mt-0.5">Ask me anything!</p>
           </div>
 
-          <div className="flex items-center gap-2 mr-2">
-            <Bug size={16} />
-            <Toggle
-              toggled={showDebug}
-              aria-label="Toggle debug mode"
-              onClick={() => setShowDebug((prev) => !prev)}
-            />
-          </div>
+          {isLocalDev && (
+            <div className="flex items-center gap-2 mr-2">
+              <Bug size={16} />
+              <Toggle
+                toggled={showDebug}
+                aria-label="Toggle debug mode"
+                onClick={() => setShowDebug((prev) => !prev)}
+              />
+            </div>
+          )}
 
           <Button
             variant="ghost"
-            size="md"
-            shape="square"
             className="rounded-full h-9 w-9"
             onClick={toggleTheme}
           >
@@ -188,8 +204,6 @@ export default function Chat() {
 
           <Button
             variant="ghost"
-            size="md"
-            shape="square"
             className="rounded-full h-9 w-9"
             onClick={clearHistory}
           >
@@ -207,9 +221,8 @@ export default function Chat() {
                 <div className="text-center space-y-1 text-[13px]">
                   <div className="text-4xl mb-2 pt-0">👋</div>
                   <p className="leading-relaxed pt-2">
-                    Hi! I'm <span className="font-semibold text-[#F48120]">Jules' digital twin</span>, powered by Llama 3.3. 
-                    I would love to intern at Cloudflare, 
-                    so I built this chat to answer any questions you might have about me!
+                    Hi! I'm <span className="font-semibold text-[#F48120]">Jules' digital twin</span>, powered by Gemma 3 and Cloudflare Workers, Durable Objects, and R2. 
+                    With this chat, you can ask me any questions you might have, even when I'm sleeping 😁
                   </p>
                   <p className="font-semibold text-[#F48120] pt-3">You can ask me...</p>
                   <ul className="text-left space-y-0 pt-0">
@@ -424,6 +437,17 @@ export default function Chat() {
                 className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
               >
                 What are your socials?
+              </button>
+              <button
+                onClick={async () => {
+                  await sendMessage({
+                    role: "user",
+                    parts: [{ type: "text", text: "Please share your resume" }]
+                  });
+                }}
+                className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+              >
+                Please share your resume
               </button>
                 <button
                   onClick={() => setShowSuggestions(false)}

@@ -14,7 +14,16 @@ type TokensList = Array<Tokens.Generic & { raw: string }>;
 const MemoizedMarkdownBlock = memo(
   ({ content }: { content: string }) => (
     <div className="markdown-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <ReactMarkdown 
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ node, ...props }) => (
+            <a {...props} target="_blank" rel="noopener noreferrer" />
+          )
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   ),
   (prevProps, nextProps) => prevProps.content === nextProps.content
