@@ -23,7 +23,7 @@ export const Button = ({
           "btn-tertiary": variant === "tertiary",
           "btn-ghost": variant === "ghost",
           "btn-destructive": variant === "destructive",
-          "add-disable": disabled,
+          "add-disable": disabled
         },
         className
       )}

@@ -14,7 +14,7 @@ type TokensList = Array<Tokens.Generic & { raw: string }>;
 const MemoizedMarkdownBlock = memo(
   ({ content }: { content: string }) => (
     <div className="markdown-body">
-      <ReactMarkdown 
+      <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ node, ...props }) => (

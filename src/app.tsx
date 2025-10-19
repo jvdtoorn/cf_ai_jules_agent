@@ -4,7 +4,6 @@ import { useAgent } from "agents/react";
 import { isToolUIPart } from "ai";
 import { useAgentChat } from "agents/ai-react";
 import type { UIMessage } from "@ai-sdk/react";
-import type { tools } from "./tools";
 
 // Component imports
 import { Button } from "@/components/button/Button";
@@ -24,11 +23,8 @@ import {
   X
 } from "@phosphor-icons/react";
 
-// List of tools that require human confirmation
-// NOTE: this should match the tools that don't have execute functions in tools.ts
-const toolsRequiringConfirmation: (keyof typeof tools)[] = [
-  // All tools auto-execute
-];
+// List of tools that require human confirmation (currently none)
+const toolsRequiringConfirmation: string[] = [];
 
 export default function Chat() {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -40,10 +36,12 @@ export default function Chat() {
   const [textareaHeight, setTextareaHeight] = useState("auto");
   const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Check if we're in local development (localhost or 127.0.0.1)
-  const isLocalDev = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const isLocalDev =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,8 +73,8 @@ export default function Chat() {
   // Fetch session ID on mount
   useEffect(() => {
     fetch("/api/session", { credentials: "include" })
-      .then(res => res.json())
-      .then(data => setSessionId((data as { sessionId: string }).sessionId))
+      .then((res) => res.json())
+      .then((data) => setSessionId((data as { sessionId: string }).sessionId))
       .catch(console.error);
   }, []);
 
@@ -129,14 +127,14 @@ export default function Chat() {
   const clearHistory = async () => {
     // Clear local state
     clearLocalHistory();
-    
+
     // Clear server-side history
     try {
-      const response = await fetch("/api/clear-history", { 
+      const response = await fetch("/api/clear-history", {
         method: "POST",
         credentials: "include" // Include cookies
       });
-      
+
       if (!response.ok) {
         console.error("Failed to clear server history");
       }
@@ -158,9 +156,7 @@ export default function Chat() {
         isToolUIPart(part) &&
         part.state === "input-available" &&
         // Manual check inside the component
-        toolsRequiringConfirmation.includes(
-          part.type.replace("tool-", "") as keyof typeof tools
-        )
+        toolsRequiringConfirmation.includes(part.type.replace("tool-", ""))
     )
   );
 
@@ -172,15 +168,17 @@ export default function Chat() {
     <div className="h-[100dvh] w-full max-[544px]:p-0 p-4 flex justify-center items-center bg-fixed overflow-hidden max-[544px]:bg-transparent bg-neutral-100 dark:max-[544px]:bg-transparent dark:bg-neutral-900">
       <div className="max-[544px]:h-[100dvh] h-[calc(100dvh-2rem)] w-full mx-auto max-w-lg flex flex-col max-[544px]:shadow-none shadow-xl max-[544px]:rounded-none rounded-2xl overflow-hidden relative max-[544px]:border-0 border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-950">
         <div className="px-4 py-3 border-b border-neutral-300 dark:border-neutral-800 flex items-center gap-3 sticky top-0 z-10 bg-white dark:bg-neutral-950">
-          <img 
-            src="/profile.jpg" 
+          <img
+            src="/profile.jpg"
             alt="Jules van der Toorn"
             className="w-10 h-10 rounded-full object-cover border border-neutral-200 dark:border-neutral-700"
           />
 
           <div className="flex-1 pt-1">
             <h2 className="font-semibold text-base">Jules van der Toorn</h2>
-            <p className="text-xs text-muted-foreground -mt-0.5">Ask me anything!</p>
+            <p className="text-xs text-muted-foreground -mt-0.5">
+              Ask me anything!
+            </p>
           </div>
 
           {isLocalDev && (
@@ -212,244 +210,271 @@ export default function Chat() {
         </div>
 
         {/* Messages Container */}
-          <div className="flex-1 relative">
-            {/* Messages */}
-            <div className={`absolute inset-0 overflow-y-auto p-4 space-y-1 ${showSuggestions ? 'pb-13' : 'pb-2'}`}>
+        <div className="flex-1 relative">
+          {/* Messages */}
+          <div
+            className={`absolute inset-0 overflow-y-auto p-4 space-y-1 ${showSuggestions ? "pb-13" : "pb-2"}`}
+          >
             {agentMessages.length === 0 && (
-            <div className="flex justify-center py-4">
-              <Card className="p-7 max-w-md mx-auto bg-neutral-100 dark:bg-neutral-900 rounded-2xl">
-                <div className="text-center space-y-1 text-[13px]">
-                  <div className="text-4xl mb-2 pt-0">👋</div>
-                  <p className="leading-relaxed pt-2">
-                    Hi! I'm <span className="font-semibold text-[#F48120]">Jules' digital twin</span>, powered by Gemma 3 and Cloudflare Workers, Durable Objects, and R2. 
-                    With this chat, you can ask me any questions you might have, even when I'm sleeping 😁
-                  </p>
-                  <p className="font-semibold text-[#F48120] pt-3">You can ask me...</p>
-                  <ul className="text-left space-y-0 pt-0">
-                    <li className="flex items-center gap-3">
-                      <span className="text-[#F48120] text-lg">•</span>
-                      <span>to elaborate on my work experience and skills 💼</span>
-                    </li>
-                    <li className="flex items-center gap-3">
-                      <span className="text-[#F48120] text-lg">•</span>
-                      <span>about my educational background 🎓</span>
-                    </li>
-                    <li className="flex items-center gap-3">
-                      <span className="text-[#F48120] text-lg">•</span>
-                      <span>to specify my internship availability 📅</span>
-                    </li>
-                    <li className="flex items-center gap-3">
-                      <span className="text-[#F48120] text-lg">•</span>
-                      <span>to share my CV or cover letter 📄</span>
-                    </li>
-                  </ul>
-                  <p className="text-left pt-0.5">... and other things such as my hobbies and interests!</p>
-                  <p className="text-xs text-muted-foreground italic pt-5">
-                    Your conversation is private and automatically deleted after 7 days of inactivity.
-                  </p>
-                </div>
-              </Card>
-            </div>
-          )}
+              <div className="flex justify-center py-4">
+                <Card className="p-7 max-w-md mx-auto bg-neutral-100 dark:bg-neutral-900 rounded-2xl">
+                  <div className="text-center space-y-1 text-[13px]">
+                    <div className="text-4xl mb-2 pt-0">👋</div>
+                    <p className="leading-relaxed pt-2">
+                      Hi! I'm{" "}
+                      <span className="font-semibold text-[#F48120]">
+                        Jules' digital twin
+                      </span>
+                      , powered by Gemma 3 and Cloudflare Workers, Durable
+                      Objects, and R2. With this chat, you can ask me any
+                      questions you might have, even when I'm sleeping 😁
+                    </p>
+                    <p className="font-semibold text-[#F48120] pt-3">
+                      You can ask me...
+                    </p>
+                    <ul className="text-left space-y-0 pt-0">
+                      <li className="flex items-center gap-3">
+                        <span className="text-[#F48120] text-lg">•</span>
+                        <span>
+                          to elaborate on my work experience and skills 💼
+                        </span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <span className="text-[#F48120] text-lg">•</span>
+                        <span>about my educational background 🎓</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <span className="text-[#F48120] text-lg">•</span>
+                        <span>to specify my internship availability 📅</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <span className="text-[#F48120] text-lg">•</span>
+                        <span>to share my CV or cover letter 📄</span>
+                      </li>
+                    </ul>
+                    <p className="text-left pt-0.5">
+                      ... and other things such as my hobbies and interests!
+                    </p>
+                    <p className="text-xs text-muted-foreground italic pt-5">
+                      Your conversation is private and automatically deleted
+                      after 7 days of inactivity.
+                    </p>
+                  </div>
+                </Card>
+              </div>
+            )}
 
-          {agentMessages.map((m, index) => {
-            const isUser = m.role === "user";
-            
-            // Filter out empty text parts (e.g., step-start with empty string)
-            const hasVisibleContent = m.parts?.some((part) => {
-              if (part.type === "text") {
-                return part.text.trim().length > 0;
+            {agentMessages.map((m, _index) => {
+              const isUser = m.role === "user";
+
+              // Filter out empty text parts (e.g., step-start with empty string)
+              const hasVisibleContent = m.parts?.some((part) => {
+                if (part.type === "text") {
+                  return part.text.trim().length > 0;
+                }
+                return true; // Keep tool invocations
+              });
+
+              // Skip rendering if no visible content
+              if (!hasVisibleContent) {
+                return null;
               }
-              return true; // Keep tool invocations
-            });
-            
-            // Skip rendering if no visible content
-            if (!hasVisibleContent) {
-              return null;
-            }
 
-            return (
-              <div key={m.id}>
-                {showDebug && (
-                  <pre className="text-xs text-muted-foreground overflow-scroll">
-                    {JSON.stringify(m, null, 2)}
-                  </pre>
-                )}
-                <div
-                  className={`flex ${isUser ? "justify-end" : "justify-start"} mb-0.5`}
-                >
+              return (
+                <div key={m.id}>
+                  {showDebug && (
+                    <pre className="text-xs text-muted-foreground overflow-scroll">
+                      {JSON.stringify(m, null, 2)}
+                    </pre>
+                  )}
                   <div
-                    className={`flex gap-2 max-w-[75%] ${
-                      isUser ? "flex-row-reverse" : "flex-row"
-                    }`}
+                    className={`flex ${isUser ? "justify-end" : "justify-start"} mb-0.5`}
                   >
-                    <div>
+                    <div
+                      className={`flex gap-2 max-w-[75%] ${
+                        isUser ? "flex-row-reverse" : "flex-row"
+                      }`}
+                    >
                       <div>
-                        {m.parts?.map((part, i) => {
-                          if (part.type === "text") {
-                            // Skip empty text parts
-                            if (part.text.trim().length === 0) {
-                              return null;
-                            }
-                            
-                            return (
-                              // biome-ignore lint/suspicious/noArrayIndexKey: immutable index
-                              <div key={i}>
-                                <Card
-                                  className={`p-3 rounded-2xl shadow-sm ${
-                                    isUser
-                                      ? "bg-[#F48120] text-white border-none"
-                                      : "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700"
-                                  } ${
-                                    part.text.startsWith("scheduled message")
-                                      ? "border-accent/50"
-                                      : ""
-                                  } relative`}
-                                >
-                                  {part.text.startsWith(
-                                    "scheduled message"
-                                  ) && (
-                                    <span className="absolute -top-3 -left-2 text-base">
-                                      🕒
-                                    </span>
-                                  )}
-                                  <div className={isUser ? "text-white" : ""}>
-                                    <MemoizedMarkdown
-                                      id={`${m.id}-${i}`}
-                                      content={part.text.replace(
-                                        /^scheduled message: /,
-                                        ""
-                                      )}
-                                    />
-                                  </div>
-                                </Card>
-                                <p
-                                  className={`text-xs text-muted-foreground mt-1 px-2 ${
-                                    isUser ? "text-right" : "text-left"
-                                  }`}
-                                >
-                                  {formatTime(
-                                    m.metadata?.createdAt
-                                      ? new Date(m.metadata.createdAt)
-                                      : new Date()
-                                  )}
-                                </p>
-                              </div>
-                            );
-                          }
+                        <div>
+                          {m.parts?.map((part, i) => {
+                            if (part.type === "text") {
+                              // Skip empty text parts
+                              if (part.text.trim().length === 0) {
+                                return null;
+                              }
 
-                          if (
-                            isToolUIPart(part) &&
-                            m.id.startsWith("assistant")
-                          ) {
-                            // Hide tool call invocations, but show tool results/outputs
-                            if (part.state === "output-available" && part.output) {
-                              // Render tool output as a regular message
-                              const isUser = m.role === "user";
-                              const outputText = typeof part.output === "string" 
-                                ? part.output 
-                                : JSON.stringify(part.output);
-                              
                               return (
-                                <div
-                                  key={`${m.id}-${i}`}
-                                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-                                >
-                                  <div className="max-w-[80%]">
-                                    <Card
-                                      className={`px-4 py-3 ${
-                                        isUser
-                                          ? "bg-orange-500 text-white"
-                                          : "bg-white dark:bg-neutral-800"
-                                      }`}
-                                    >
-                                      <div className={isUser ? "text-white" : ""}>
-                                        <MemoizedMarkdown
-                                          id={`${m.id}-${i}`}
-                                          content={outputText}
-                                        />
-                                      </div>
-                                    </Card>
-                                    <p
-                                      className={`text-xs text-muted-foreground mt-1 px-2 ${
-                                        isUser ? "text-right" : "text-left"
-                                      }`}
-                                    >
-                                      {formatTime(
-                                        m.metadata?.createdAt
-                                          ? new Date(m.metadata.createdAt)
-                                          : new Date()
-                                      )}
-                                    </p>
-                                  </div>
+                                // biome-ignore lint/suspicious/noArrayIndexKey: immutable index
+                                <div key={i}>
+                                  <Card
+                                    className={`p-3 rounded-2xl shadow-sm ${
+                                      isUser
+                                        ? "bg-[#F48120] text-white border-none"
+                                        : "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700"
+                                    } ${
+                                      part.text.startsWith("scheduled message")
+                                        ? "border-accent/50"
+                                        : ""
+                                    } relative`}
+                                  >
+                                    {part.text.startsWith(
+                                      "scheduled message"
+                                    ) && (
+                                      <span className="absolute -top-3 -left-2 text-base">
+                                        🕒
+                                      </span>
+                                    )}
+                                    <div className={isUser ? "text-white" : ""}>
+                                      <MemoizedMarkdown
+                                        id={`${m.id}-${i}`}
+                                        content={part.text.replace(
+                                          /^scheduled message: /,
+                                          ""
+                                        )}
+                                      />
+                                    </div>
+                                  </Card>
+                                  <p
+                                    className={`text-xs text-muted-foreground mt-1 px-2 ${
+                                      isUser ? "text-right" : "text-left"
+                                    }`}
+                                  >
+                                    {formatTime(
+                                      m.metadata?.createdAt
+                                        ? new Date(m.metadata.createdAt)
+                                        : new Date()
+                                    )}
+                                  </p>
                                 </div>
                               );
                             }
-                            
-                            // Hide all other tool states (input-available, running, etc.)
+
+                            if (
+                              isToolUIPart(part) &&
+                              m.id.startsWith("assistant")
+                            ) {
+                              // Hide tool call invocations, but show tool results/outputs
+                              if (
+                                part.state === "output-available" &&
+                                part.output
+                              ) {
+                                // Render tool output as a regular message
+                                const isUser = m.role === "user";
+                                const outputText =
+                                  typeof part.output === "string"
+                                    ? part.output
+                                    : JSON.stringify(part.output);
+
+                                return (
+                                  <div
+                                    key={`${m.id}-${i}`}
+                                    className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                                  >
+                                    <div className="max-w-[80%]">
+                                      <Card
+                                        className={`px-4 py-3 ${
+                                          isUser
+                                            ? "bg-orange-500 text-white"
+                                            : "bg-white dark:bg-neutral-800"
+                                        }`}
+                                      >
+                                        <div
+                                          className={isUser ? "text-white" : ""}
+                                        >
+                                          <MemoizedMarkdown
+                                            id={`${m.id}-${i}`}
+                                            content={outputText}
+                                          />
+                                        </div>
+                                      </Card>
+                                      <p
+                                        className={`text-xs text-muted-foreground mt-1 px-2 ${
+                                          isUser ? "text-right" : "text-left"
+                                        }`}
+                                      >
+                                        {formatTime(
+                                          m.metadata?.createdAt
+                                            ? new Date(m.metadata.createdAt)
+                                            : new Date()
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              // Hide all other tool states (input-available, running, etc.)
+                              return null;
+                            }
                             return null;
-                          }
-                          return null;
-                        })}
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-          <div ref={messagesEndRef} />
+              );
+            })}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Question Suggestions - Fixed to bottom of container */}
           {showSuggestions && (
             <div className="absolute bottom-0 left-0 right-0 pb-3 pointer-events-none">
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto px-3">
-              <button
-                onClick={async () => {
-                  await sendMessage({
-                    role: "user",
-                    parts: [{ type: "text", text: "Why should we hire you?" }]
-                  });
-                }}
-                className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
-              >
-                Why should we hire you?
-              </button>
-              <button
-                onClick={async () => {
-                  await sendMessage({
-                    role: "user",
-                    parts: [{ type: "text", text: "What are your hobbies?" }]
-                  });
-                }}
-                className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
-              >
-                What are your hobbies?
-              </button>
-              <button
-                onClick={async () => {
-                  await sendMessage({
-                    role: "user",
-                    parts: [{ type: "text", text: "What are your socials?" }]
-                  });
-                }}
-                className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
-              >
-                What are your socials?
-              </button>
-              <button
-                onClick={async () => {
-                  await sendMessage({
-                    role: "user",
-                    parts: [{ type: "text", text: "Please share your resume" }]
-                  });
-                }}
-                className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
-              >
-                Please share your resume
-              </button>
                 <button
+                  type="button"
+                  onClick={async () => {
+                    await sendMessage({
+                      role: "user",
+                      parts: [{ type: "text", text: "Why should we hire you?" }]
+                    });
+                  }}
+                  className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+                >
+                  Why should we hire you?
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await sendMessage({
+                      role: "user",
+                      parts: [{ type: "text", text: "What are your hobbies?" }]
+                    });
+                  }}
+                  className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+                >
+                  What are your hobbies?
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await sendMessage({
+                      role: "user",
+                      parts: [{ type: "text", text: "What are your socials?" }]
+                    });
+                  }}
+                  className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+                >
+                  What are your socials?
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await sendMessage({
+                      role: "user",
+                      parts: [
+                        { type: "text", text: "Please share your resume" }
+                      ]
+                    });
+                  }}
+                  className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+                >
+                  Please share your resume
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowSuggestions(false)}
                   className="p-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 hover:bg-white dark:hover:bg-neutral-800 transition-colors shrink-0"
                   aria-label="Dismiss suggestions"
