@@ -464,6 +464,18 @@ export default function Chat() {
                   onClick={async () => {
                     await sendMessage({
                       role: "user",
+                      parts: [{ type: "text", text: "Where did you work before?" }]
+                    });
+                  }}
+                  className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+                >
+                  Where did you work before?
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await sendMessage({
+                      role: "user",
                       parts: [{ type: "text", text: "Why should we hire you?" }]
                     });
                   }}
