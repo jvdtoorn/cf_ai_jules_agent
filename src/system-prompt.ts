@@ -8,9 +8,29 @@ function calculateAge(): number {
   );
 }
 
+function getCurrentDateTime(): string {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Amsterdam',
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(now);
+  const get = (type: string) => parts.find(p => p.type === type)?.value;
+
+  return `${get('weekday')}, ${get('day')}/${get('month')}/${get('year')} at ${get('hour')}:${get('minute')}`;
+}
+
 function replaceTemplateVariables(template: string): string {
   return template
     .replace(/\{\{AGE\}\}/g, calculateAge().toString())
+    .replace(/\{\{CURRENT_DATE_TIME\}\}/g, getCurrentDateTime())
     .replace(/\{\{RESUME_LINK\}\}/g, "/api/download/cv")
     .replace(/\{\{COVER_LETTER_LINK\}\}/g, "/api/download/cover_letter");
 }
