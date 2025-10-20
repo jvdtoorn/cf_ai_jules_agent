@@ -3,9 +3,8 @@
 let systemPromptCache: string | null = null;
 
 function calculateAge(): number {
-  const birthDate = new Date("2000-06-27");
   return Math.floor(
-    (Date.now() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+    (Date.now() - (new Date(962_064_000_000)).getTime()) / (1000 * 60 * 60 * 24 * 365.25)
   );
 }
 

@@ -25,7 +25,7 @@ This project is built entirely on Cloudflare's platform:
 - **Cloudflare Durable Objects** - Stores conversation history with SQL
 - **Cloudflare R2** - Stores documents (resume, cover letter, system prompt)
 - **Cloudflare Workers AI** - Runs the Gemma 3 12B model
-- **Vercel AI SDK** - Handles the AI streaming and tool calling
+- **Vercel AI SDK** - Handles the AI streaming
 - **React + Vite** - Modern UI with Tailwind CSS
 
 ## 🚀 Quick Start

@@ -423,17 +423,29 @@ export default function Chat() {
           {showSuggestions && (
             <div className="absolute bottom-0 left-0 right-0 pb-3 pointer-events-none">
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto px-3">
+              <button
+                  type="button"
+                  onClick={async () => {
+                    await sendMessage({
+                      role: "user",
+                      parts: [{ type: "text", text: "What are you studying?" }]
+                    });
+                  }}
+                  className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+                >
+                  What are you studying?
+                </button>
                 <button
                   type="button"
                   onClick={async () => {
                     await sendMessage({
                       role: "user",
-                      parts: [{ type: "text", text: "Why should we hire you?" }]
+                      parts: [{ type: "text", text: "Tell me about a cool project" }]
                     });
                   }}
                   className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
                 >
-                  Why should we hire you?
+                  Tell me about a cool project
                 </button>
                 <button
                   type="button"
@@ -446,6 +458,18 @@ export default function Chat() {
                   className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
                 >
                   What are your hobbies?
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await sendMessage({
+                      role: "user",
+                      parts: [{ type: "text", text: "Why should we hire you?" }]
+                    });
+                  }}
+                  className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+                >
+                  Why should we hire you?
                 </button>
                 <button
                   type="button"
@@ -472,6 +496,18 @@ export default function Chat() {
                   className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
                 >
                   Please share your resume
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await sendMessage({
+                      role: "user",
+                      parts: [{ type: "text", text: "How did you build this?" }]
+                    });
+                  }}
+                  className="px-4 py-2 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 text-sm whitespace-nowrap hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+                >
+                  How did you build this?
                 </button>
                 <button
                   type="button"
